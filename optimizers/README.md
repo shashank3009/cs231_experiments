@@ -153,7 +153,8 @@ W2 -= lr * dL_by_dW2 / (np.sqrt(optim["cache_dw2"]) + eps)
 
 #### Adam
 
-An advanced optimizer combining Momentum and RMSProp. Has shown better convergence in practice.
+An advanced optimizer combining Momentum and RMSProp. It also uses bias correction, because the `m` and `v` are biased towards 0 (since they are initialised with 0) during the early stages of training. Has shown better convergence in practice.
+
 
 ```python
 optim = {
@@ -166,14 +167,20 @@ optim = {
     "b2": 0.99
 }
 
-optim["m_dw1"] = optim["b1"] * optim["m_dw1"] + (1 - optim["b1"]) * dL_by_dW1
-optim["m_dw2"] = optim["b1"] * optim["m_dw2"] + (1 - optim["b1"]) * dL_by_dW2
+optim["m_dw1"] = optim["b1"]*optim["m_dw1"] + (1-optim["b1"])*dL_by_dW1
+m_dw1_hat = optim["m_dw1"] / (1 - optim["b1"]**i)
 
-optim["v_dw1"] = optim["b2"] * optim["v_dw1"] + (1 - optim["b2"]) * dL_by_dW1**2
-optim["v_dw2"] = optim["b2"] * optim["v_dw2"] + (1 - optim["b2"]) * dL_by_dW2**2
+optim["m_dw2"] = optim["b1"]*optim["m_dw2"] + (1-optim["b1"])*dL_by_dW2
+m_dw2_hat = optim["m_dw2"] / (1 - optim["b1"]**i)
 
-W1 -= lr * optim["m_dw1"] / (np.sqrt(optim["v_dw1"]) + eps)
-W2 -= lr * optim["m_dw2"] / (np.sqrt(optim["v_dw2"]) + eps)
+optim["v_dw1"] = optim["b2"]*optim["v_dw1"] + (1-optim["b2"])*dL_by_dW1**2
+v_dw1_hat = optim["v_dw1"] / (1 - optim["b2"]**i)
+
+optim["v_dw2"] = optim["b2"]*optim["v_dw2"] + (1-optim["b2"])*dL_by_dW2**2
+v_dw2_hat = optim["v_dw2"] / (1 - optim["b2"]**i)
+
+W1 -= lr*m_dw1_hat / (np.sqrt(v_dw1_hat) + eps)
+W2 -= lr*m_dw2_hat / (np.sqrt(v_dw2_hat) + eps)
 ```
 
 ---
@@ -182,6 +189,6 @@ W2 -= lr * optim["m_dw2"] / (np.sqrt(optim["v_dw2"]) + eps)
 
 ![Comparison](./images/comparison.png)
 
-* **Adam** converges faster than all other optimizers.
+* **RMSProp** and **Adam** converges faster than rest of the optimizers.
 * **Adagrad** and **Vanilla SGD** struggled to converge and got stuck.
-* After Adam, **RMSProp** performed best, followed by **Nesterov** and **SGD with Momentum**.
+* Usually Adam outperforms RMRProp, but since the data and model are small here, we see that RMSProp is converging better than Adam
